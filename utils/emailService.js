@@ -182,4 +182,48 @@ const sendApplicationReceiptEmail = async (inquiryData) => {
   }
 };
 
-module.exports = { sendWelcomeEmail, sendCustomEmail, sendApplicationReceiptEmail };
+const sendJobApplicationReceipt = async (toEmail, toName, jobTitle) => {
+  const mailOptions = {
+    from: `"NextGlide Careers" <${process.env.SMTP_EMAIL}>`,
+    to: toEmail,
+    subject: `Application Received: ${jobTitle}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-bottom: 3px solid #007bff;">
+          <h1 style="color: #007bff; margin: 0;">NextGlide</h1>
+        </div>
+        <div style="padding: 30px; border: 1px solid #e9ecef; border-top: none;">
+          <h2 style="color: #333;">Hello ${toName},</h2>
+          <p style="font-size: 16px; line-height: 1.5;">
+            Thank you for applying for the position of <strong>${jobTitle}</strong> at NextGlide.
+          </p>
+          <p style="font-size: 16px; line-height: 1.5;">
+            We have successfully received your application. Our recruitment team will review your qualifications and get back to you if there is a match.
+          </p>
+          <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; margin: 20px 0;">
+             <p style="margin: 0; font-style: italic;">"Join us in building the future."</p>
+          </div>
+          <p style="font-size: 16px; line-height: 1.5;">
+            Best regards,<br>
+            <strong>NextGlide Talent Acquisition</strong>
+          </p>
+        </div>
+        <div style="text-align: center; padding: 20px; font-size: 12px; color: #888;">
+          &copy; ${new Date().getFullYear()} NextGlide. All rights reserved.
+        </div>
+      </div>
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Job application receipt email sent:', info.messageId);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending job application receipt:', error);
+    return false;
+  }
+};
+
+module.exports = { sendWelcomeEmail, sendCustomEmail, sendApplicationReceiptEmail, sendJobApplicationReceipt };
+

@@ -78,6 +78,8 @@ app.use('/api/services', serviceRoutes); // Register Service Routes
 app.use('/api/solutions', solutionRoutes); // Register Solution Routes
 app.use('/api/jobs', jobRoutes);
 app.use('/api/forms', formRoutes);
+app.use('/api/applications', require('./routes/applicationRoutes'));
+
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
