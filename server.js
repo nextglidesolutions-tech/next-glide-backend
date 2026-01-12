@@ -5,6 +5,8 @@ const cors = require('cors');
 const contactRoutes = require('./routes/contactRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
 const solutionRoutes = require('./routes/solutionRoutes');
+const jobRoutes = require('./routes/jobRoutes');
+const formRoutes = require('./routes/formRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -74,6 +76,8 @@ app.get('/', (req, res) => {
 app.use('/api/contacts', contactRoutes);
 app.use('/api/services', serviceRoutes); // Register Service Routes
 app.use('/api/solutions', solutionRoutes); // Register Solution Routes
+app.use('/api/jobs', jobRoutes);
+app.use('/api/forms', formRoutes);
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
