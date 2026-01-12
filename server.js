@@ -81,17 +81,33 @@ app.use('/api/forms', formRoutes);
 app.use('/api/applications', require('./routes/applicationRoutes'));
 
 
-// Database Connection
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch((err) => console.error('❌ MongoDB Connection Error:', err));
+// Database Connection Logic
+let isConnected = false;
 
-// Export the app for serverless function
-module.exports = app;
+const connectDB = async () => {
+    if (isConnected) {
+        return;
+    }
+
+    try {
+        const db = await mongoose.connect(process.env.MONGODB_URI);
+        isConnected = db.connections[0].readyState;
+        console.log('✅ MongoDB Connected');
+    } catch (err) {
+        console.error('❌ MongoDB Connection Error:', err);
+        // Don't exit process in serverless, just throw
+        throw err;
+    }
+};
 
 // Start Server locally
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT}`);
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
+    connectDB().then(() => {
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+        });
     });
 }
+
+// Export the app AND connectDB for serverless function
+module.exports = { app, connectDB };
