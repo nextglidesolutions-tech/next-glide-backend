@@ -69,15 +69,6 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Routes
-app.use('/api/contacts', contactRoutes);
-app.use('/api/services', serviceRoutes); // Register Service Routes
-app.use('/api/solutions', solutionRoutes); // Register Solution Routes
-app.use('/api/jobs', jobRoutes);
-app.use('/api/forms', formRoutes);
-app.use('/api/applications', require('./routes/applicationRoutes'));
-
-
 // Database Connection Logic (Cached for Serverless)
 let cached = global.mongoose;
 
@@ -89,11 +80,9 @@ const connectDB = async () => {
     // 1. Check if we have a valid cached connection
     if (cached.conn) {
         if (cached.conn.readyState === 1) {
-            // console.log('✅ Using cached MongoDB connection');
             return cached.conn;
         }
         console.log('⚠️ Cached connection exists but is not ready (state:', cached.conn.readyState, '). Reconnecting...');
-        // If not ready, we reset the promise to force a new connection
         cached.promise = null;
     }
 
@@ -105,9 +94,7 @@ const connectDB = async () => {
             socketTimeoutMS: 45000,
         };
 
-        // DEBUG: Check if URI exists
         if (!process.env.MONGODB_URI) {
-            console.error('❌ MONGODB_URI is MISSING in environment variables!');
             throw new Error('MONGODB_URI is missing');
         }
 
@@ -135,10 +122,9 @@ app.use(async (req, res, next) => {
     // Skip DB connection for simple health check
     if (req.path === '/api/health') return next();
 
-    // 1. Log the Outbound IP for debugging Whitelist issues (Optional, can be removed for prod)
-    // Removed to speed up requests, user can enable if IP issues persist.
+    // 2. Disable Mongoose Buffering (Fail fast if no connection)
+    mongoose.set('bufferCommands', false);
 
-    // 2. DB Connection
     try {
         await connectDB();
         next();
@@ -151,6 +137,17 @@ app.use(async (req, res, next) => {
         });
     }
 });
+
+// Routes
+app.use('/api/contacts', contactRoutes);
+app.use('/api/services', serviceRoutes); // Register Service Routes
+app.use('/api/solutions', solutionRoutes); // Register Solution Routes
+app.use('/api/jobs', jobRoutes);
+app.use('/api/forms', formRoutes);
+app.use('/api/applications', require('./routes/applicationRoutes'));
+
+
+
 
 // Debug/Health Route
 app.get('/api/health', (req, res) => {
