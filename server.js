@@ -82,6 +82,7 @@ app.use('/api/applications', require('./routes/applicationRoutes'));
 
 
 // Database Connection Logic
+// Database Connection Logic
 let isConnected = false;
 
 const connectDB = async () => {
@@ -100,6 +101,12 @@ const connectDB = async () => {
     }
 };
 
+// Middleware to ensure DB is connected before handling requests
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
+
 // Start Server locally
 if (process.env.NODE_ENV !== 'production' && require.main === module) {
     connectDB().then(() => {
@@ -109,5 +116,5 @@ if (process.env.NODE_ENV !== 'production' && require.main === module) {
     });
 }
 
-// Export the app AND connectDB for serverless function
-module.exports = { app, connectDB };
+// Export the app directly for Vercel
+module.exports = app;
