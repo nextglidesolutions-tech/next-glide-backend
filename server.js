@@ -78,24 +78,28 @@ app.use('/api/applications', require('./routes/applicationRoutes'));
 let isConnected = false;
 
 const connectDB = async () => {
-    if (isConnected) {
+    // If state is 1 (connected), return
+    if (mongoose.connection.readyState === 1) {
         console.log('✅ Using existing MongoDB connection');
+        isConnected = true;
         return;
     }
 
-    // DEBUG: Check if URI exists (don't log the full secret)
+    // DEBUG: Check if URI exists
     if (!process.env.MONGODB_URI) {
         console.error('❌ MONGODB_URI is MISSING in environment variables!');
         throw new Error('MONGODB_URI is missing');
-    } else {
-        console.log('ℹ️ MONGODB_URI is present (starts with: ' + process.env.MONGODB_URI.substring(0, 15) + '...)');
     }
 
     try {
+        console.log('⏳ Connecting to MongoDB...');
+        // Options to ensure robust serverless connection
         const db = await mongoose.connect(process.env.MONGODB_URI, {
-            serverSelectionTimeoutMS: 5000 // Timeout after 5s instead of 30s
+            serverSelectionTimeoutMS: 5000, // Fail after 5s if can't connect
+            socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
         });
-        isConnected = db.connections[0].readyState;
+
+        isConnected = db.connections[0].readyState === 1;
         console.log('✅ MongoDB Connected successfully');
     } catch (err) {
         console.error('❌ MongoDB Connection FATAL Error:', err);
@@ -108,6 +112,7 @@ app.use(async (req, res, next) => {
     // Skip DB connection for simple health check
     if (req.path === '/api/health') return next();
 
+    // Mongoose buffering prevents immediate failure, but we want to ensure connection exists.
     try {
         await connectDB();
         next();
@@ -125,7 +130,7 @@ app.get('/api/health', (req, res) => {
         env: {
             node_env: process.env.NODE_ENV,
             has_mongo_uri: !!process.env.MONGODB_URI,
-            mongo_connected: isConnected
+            mongo_connected: mongoose.connection.readyState === 1
         }
     });
 });
