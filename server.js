@@ -79,10 +79,10 @@ if (!cached) {
 const connectDB = async () => {
     // 1. Check if we have a valid cached connection
     if (cached.conn) {
-        if (cached.conn.readyState === 1) {
+        if (cached.conn.connection.readyState === 1) {
             return cached.conn;
         }
-        console.log('⚠️ Cached connection exists but is not ready (state:', cached.conn.readyState, '). Reconnecting...');
+        console.log('⚠️ Cached connection exists but is not ready (state:', cached.conn.connection.readyState, '). Reconnecting...');
         cached.promise = null;
     }
 
