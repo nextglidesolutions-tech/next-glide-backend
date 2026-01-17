@@ -86,11 +86,18 @@ if (!cached) {
 }
 
 const connectDB = async () => {
+    // 1. Check if we have a valid cached connection
     if (cached.conn) {
-        // console.log('✅ Using cached MongoDB connection');
-        return cached.conn;
+        if (cached.conn.readyState === 1) {
+            // console.log('✅ Using cached MongoDB connection');
+            return cached.conn;
+        }
+        console.log('⚠️ Cached connection exists but is not ready (state:', cached.conn.readyState, '). Reconnecting...');
+        // If not ready, we reset the promise to force a new connection
+        cached.promise = null;
     }
 
+    // 2. No valid cache, create new connection promise
     if (!cached.promise) {
         const opts = {
             bufferCommands: false, // Disable Mongoose buffering
@@ -111,6 +118,7 @@ const connectDB = async () => {
         });
     }
 
+    // 3. Await the promise
     try {
         cached.conn = await cached.promise;
     } catch (e) {
