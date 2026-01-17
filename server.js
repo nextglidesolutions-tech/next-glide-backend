@@ -20,7 +20,14 @@ app.use((req, res, next) => {
 
 // CORS Configuration
 app.use(cors({
-    origin: '*', // Allow ALL origins
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl requests)
+        if (!origin) return callback(null, true);
+
+        // Dynamically allow ALL origins by returning true
+        // This sets Access-Control-Allow-Origin to the request's Origin header
+        return callback(null, true);
+    },
     credentials: true
 }));
 app.use(express.json());
