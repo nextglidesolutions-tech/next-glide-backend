@@ -1,6 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+
+// Global Mongoose Configuration (Must be before routes/models)
+mongoose.set('strictQuery', false);
+mongoose.set('bufferCommands', false); // Disable buffering globally
+
 const cors = require('cors');
 const contactRoutes = require('./routes/contactRoutes');
 const serviceRoutes = require('./routes/serviceRoutes');
@@ -73,38 +78,48 @@ app.use('/api/forms', formRoutes);
 app.use('/api/applications', require('./routes/applicationRoutes'));
 
 
-// Database Connection Logic
-// Database Connection Logic
-let isConnected = false;
+// Database Connection Logic (Cached for Serverless)
+let cached = global.mongoose;
+
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
-    // If state is 1 (connected), return
-    if (mongoose.connection.readyState === 1) {
-        console.log('✅ Using existing MongoDB connection');
-        isConnected = true;
-        return;
+    if (cached.conn) {
+        // console.log('✅ Using cached MongoDB connection');
+        return cached.conn;
     }
 
-    // DEBUG: Check if URI exists
-    if (!process.env.MONGODB_URI) {
-        console.error('❌ MONGODB_URI is MISSING in environment variables!');
-        throw new Error('MONGODB_URI is missing');
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false, // Disable Mongoose buffering
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        };
+
+        // DEBUG: Check if URI exists
+        if (!process.env.MONGODB_URI) {
+            console.error('❌ MONGODB_URI is MISSING in environment variables!');
+            throw new Error('MONGODB_URI is missing');
+        }
+
+        console.log('⏳ Connecting to MongoDB...');
+        cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+            console.log('✅ MongoDB Connected successfully');
+            return mongoose;
+        });
     }
 
     try {
-        console.log('⏳ Connecting to MongoDB...');
-        // Options to ensure robust serverless connection
-        const db = await mongoose.connect(process.env.MONGODB_URI, {
-            serverSelectionTimeoutMS: 5000, // Fail after 5s if can't connect
-            socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-        });
-
-        isConnected = db.connections[0].readyState === 1;
-        console.log('✅ MongoDB Connected successfully');
-    } catch (err) {
-        console.error('❌ MongoDB Connection FATAL Error:', err);
-        throw err;
+        cached.conn = await cached.promise;
+    } catch (e) {
+        cached.promise = null;
+        console.error('❌ MongoDB Connection FATAL Error:', e);
+        throw e;
     }
+
+    return cached.conn;
 };
 
 // Middleware to ensure DB is connected before handling requests
@@ -112,30 +127,20 @@ app.use(async (req, res, next) => {
     // Skip DB connection for simple health check
     if (req.path === '/api/health') return next();
 
-    // 1. Log the Outbound IP for debugging Whitelist issues
-    try {
-        const ipRes = await fetch('https://api.ipify.org?format=json');
-        const ipData = await ipRes.json();
-        console.log(`🌍 Server Outbound IP: ${ipData.ip}`);
-    } catch (e) {
-        console.log('⚠️ Could not check server IP:', e.message);
-    }
+    // 1. Log the Outbound IP for debugging Whitelist issues (Optional, can be removed for prod)
+    // Removed to speed up requests, user can enable if IP issues persist.
 
-    // 2. Disable Mongoose Buffering (Fail fast if no connection)
-    mongoose.set('bufferCommands', false);
-
+    // 2. DB Connection
     try {
         await connectDB();
-
-        // Double check state
-        if (mongoose.connection.readyState !== 1) {
-            throw new Error(`Mongoose readyState is ${mongoose.connection.readyState} (Expected 1). Connection failed.`);
-        }
-
         next();
     } catch (error) {
         console.error('❌ Middleware DB Connection Failed:', error);
-        res.status(500).json({ error: 'Database Connection Failed', details: error.message, ip_issue: 'Check MongoDB Network Access' });
+        res.status(500).json({
+            error: 'Database Connection Failed',
+            details: error.message,
+            suggestion: 'Check MongoDB Network Access (Whitelist 0.0.0.0/0)'
+        });
     }
 });
 
