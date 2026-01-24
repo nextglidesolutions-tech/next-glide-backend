@@ -147,14 +147,15 @@ app.use(async (req, res, next) => {
 });
 
 // Routes
-app.use('/api/contacts', contactRoutes);
-app.use('/api/services', serviceRoutes); // Register Service Routes
-app.use('/api/solutions', solutionRoutes); // Register Solution Routes
-app.use('/api/jobs', jobRoutes);
-app.use('/api/forms', formRoutes);
+app.use('/api/contacts', require('./routes/contactRoutes'));
+app.use('/api/services', require('./routes/serviceRoutes'));
+app.use('/api/solutions', require('./routes/solutionRoutes'));
+app.use('/api/jobs', require('./routes/jobRoutes'));
+app.use('/api/forms', require('./routes/formRoutes'));
 app.use('/api/applications', require('./routes/applicationRoutes'));
-
-
+// app.use('/api/social-posts', require('./routes/socialPosts'));
+// app.use('/api/upload', require('./routes/upload'));
+app.use('/api/chat-logs', require('./routes/chatLogs')); // Add Chat Logs Route
 
 
 // Debug/Health Route
